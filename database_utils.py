@@ -34,20 +34,40 @@ class DatabaseConnector:
                 print(table[0])
     
     def upload_to_db(self,df,table_name):
-        engine = self.init_db_engine()
-        df.to_sql(table_name, engine, if_exists = 'replace')
-    
+        DATABASE_TYPE = 'postgresql'
+        DBAPI = 'psycopg2'
+        HOST = self.credentials['SQL_HOST']
+        USER = self.credentials['SQL_USER']
+        PASSWORD = self.credentials['SQL_PASSWORD']
+        DATABASE = self.credentials['SQL_DATABASE']
+        PORT = self.credentials['SQL_PORT']
+        self.engine = create_engine(f"{DATABASE_TYPE}+{DBAPI}://{USER}:{PASSWORD}@{HOST}:{PORT}/{DATABASE}")
+        with self.engine.execution_options(isolation_level='AUTOCOMMIT').connect() as conn: 
+            df.to_sql(table_name,conn,if_exists='replace')
+
 # %%
 
 if __name__ == "__main__":
+    import pandas as pd
+
     test = DatabaseConnector()
-    creds = test.read_db_creds()
-    print(creds)
-    db_engine = test.init_db_engine()
-    db_engine.connect()
+    test.read_db_creds()
+    test.init_db_engine()
     test.list_db_tables()
 
+    DATABASE_TYPE = 'postgresql'
+    DBAPI = 'psycopg2'
+    HOST = test.credentials['SQL_HOST']
+    USER = test.credentials['SQL_USER']
+    PASSWORD = test.credentials['SQL_PASSWORD']
+    DATABASE = test.credentials['SQL_DATABASE']
+    PORT = test.credentials['SQL_PORT']
+    engine = create_engine(f"{DATABASE_TYPE}+{DBAPI}://{USER}:{PASSWORD}@{HOST}:{PORT}/{DATABASE}")
+    
+    with engine.execution_options(isolation_level='AUTOCOMMIT').connect() as conn: 
+        users = pd.read_sql_table('dim_users',conn)
+        print(users)
 
 # %%
-engine.execution_options(isolation_level='AUTOCOMMIT').connect()
+test.credentials['SQL_HOST']
 # %%

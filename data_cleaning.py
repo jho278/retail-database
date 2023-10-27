@@ -9,9 +9,6 @@ class DataCleaning:
     def __init__(self,df):
         self.df = df
     
-    def clean_user_data(self):
-        pass
-    
     def try_parsing_date(self,text):
         try:
             return parse(text)
@@ -23,34 +20,55 @@ class DataCleaning:
             if 'date' in col:
                 self.df[col] = self.df[col].apply(self.try_parsing_date)
                 self.df[col] = pd.to_datetime(self.df[col], errors='coerce')
-        self.df = self.df.drop('index', axis = 1)
         na_index = self.df.index[self.df['date_of_birth'].isna()].tolist() # All records corresponding to this is random data
         self.df = self.df.drop(na_index)
         return self.df
     
     def clean_phone_number(self):
-        for idx,country in enumerate(self.df['country']):
-            if country == "United States":
-                self.df.loc[idx,'phone_number'] = self.df[idx,'phone_number'].str.replace(r'(\+\d{1}|x\d+|001-|[\.\-\(\)])','',regex=True)
-                self.df.loc[~self.df[idx,'phone_number'].apply(lambda x: len(str(x)) != 10), 'phone_number'] = np.nan
-            else:
-                self.df.loc[idx,'phone_number'] = self.df[idx,'phone_number'].str.replace(r'(\+\d{2})|\s+|[(|)]','', regex= True)
-                self.df.loc[~self.df[idx,'phone_number'].apply(lambda x: len(str(x)) != 11), 'phone_number'] = np.nan
+        us_indexes = self.df[self.df['country'] == "United States"].index
+        other_indexes = self.df[self.df['country'] != "United States"].index
+
+        self.df.loc[us_indexes, 'phone_number'] = self.df.loc[us_indexes, 'phone_number'].str.replace(r'(\+\d{1}|x\d+|001-|[\.\-\(\)])', '', regex=True)
+        self.df.loc[us_indexes, 'phone_number'] = self.df.loc[us_indexes, 'phone_number'].apply(lambda x: np.nan if len(str(x)) != 11 else x)
+
+        self.df.loc[other_indexes, 'phone_number'] = self.df.loc[other_indexes, 'phone_number'].str.replace(r'(\+\d{2})|\s+|[(|)]', '', regex=True)
+        self.df.loc[other_indexes, 'phone_number'] = self.df.loc[other_indexes, 'phone_number'].apply(lambda x: np.nan if len(str(x)) != 11 else x)
         return self.df
     
+    def clean_country_code(self):
+        self.df.loc[df['country_code'] == "GGB", 'country_code']= df.loc[df['country_code'] == "GGB", 'country_code'] = "GB"
+        return self.df
     
-        
+    def clean_address(self):
+        self.df['address'] = self.df['address'].str.replace('\n', ',')
+        return self.df
+    
+    def clean_user_data(self):
+        self.df = self.clean_date_columns()
+        self.df = self.clean_phone_number()
+        self.df = self.clean_country_code()
+        self.df = self.clean_address()
+        self.df = self.df.drop('index', axis = 1)
+        return self.df  
 
 # %%
 if __name__ == '__main__':
     db = DatabaseConnector()
     table = DataExtractor(db, 'legacy_users')
     df = table.read_rds_table()
+    clean_data = DataCleaning(df)
+    print(df)
 
 # %%
-print(df)
-#%%
-clean_data = DataCleaning(df)
+cleaned_data = clean_data.clean_user_data()
+print(cleaned_data)
+
+# %%
+db.upload_to_db(cleaned_data,'dim_users')
+# %%
+print(cleaned_data['country_code'].value_counts())
+print(cleaned_data.info())
+# %%
 remove_dummy = clean_data.clean_date_columns()
 print(remove_dummy)
 print(remove_dummy.info())

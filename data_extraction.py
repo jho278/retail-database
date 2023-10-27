@@ -8,9 +8,9 @@ class DataExtractor:
         self.table = table_name
     
     def read_rds_table(self):
-         self.db.read_db_creds()
-         self.db.init_db_engine()
-         with self.db.engine.connect() as conn:
+        self.db.read_db_creds()
+        self.db.init_db_engine()
+        with self.db.engine.connect() as conn:
             db_table = pd.read_sql_table(self.table, conn)
             return db_table
 
@@ -22,3 +22,5 @@ if __name__ == '__main__':
     table = test.read_rds_table()
     print(table)
 
+
+# %%

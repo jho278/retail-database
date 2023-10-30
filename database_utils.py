@@ -67,7 +67,6 @@ if __name__ == "__main__":
     with engine.execution_options(isolation_level='AUTOCOMMIT').connect() as conn: 
         users = pd.read_sql_table('dim_users',conn)
         print(users)
+        
+    test.credentials['SQL_HOST']
 
-# %%
-test.credentials['SQL_HOST']
-# %%

@@ -2,8 +2,9 @@
 import yaml
 from sqlalchemy import create_engine
 from sqlalchemy import text
+from data_extraction import DataExtractor
 
-
+# %%
 class DatabaseConnector:
     def __init__(self):
         pass
@@ -73,6 +74,17 @@ if __name__ == "__main__":
     test.credentials['SQL_HOST']
 
 
+# %% 
+# Extract orders_table data from AWS RDS
+if __name__ == "__main__":
+    test = DatabaseConnector()
+    test.read_db_creds()
+    test.init_db_engine()
+    test.list_db_tables()
 # %%
 if __name__ == "__main__":
-    
+    extract = DataExtractor()
+    table = extract.read_rds_table(test, 'orders_table')
+    print(table)
+# %%
+# %%

@@ -66,6 +66,9 @@ class DataCleaning:
         return self.df
     
     def clean_user_data(self):
+        """
+        The above methods are combined into a singular method to tidy the users table
+        """
         self.df = self.clean_date_columns()
         self.df = self.clean_phone_number()
         self.df = self.clean_country_code()
@@ -139,6 +142,9 @@ class DataCleaning:
         return self.df
 
     def clean_store_data(self):
+        """
+        The above methods are combined to tidy the store data
+        """
         #self.df = self.df.drop(['Unnamed: 0','lat'],axis = 1)
         self.df = self.remove_random_generated()
         self.df = self.clean_api_address()
@@ -179,10 +185,36 @@ class DataCleaning:
         return self.df
         
     def clean_product_data(self):
+        """
+        The above methods are combined to tidy the products table
+        """
         self.df = self.remove_null()
         self.df = self.clean_category()
         self.df = self.convert_product_weights()
         self.df = self.clean_api_date()
+        return self.df
+
+    def clean_orders_data(self):
+        self.df.drop(['first_name','last_name','1','level_0','index'], axis = 1, inplace = True)
+        return self.df
+    
+    def concatenate_date(self):
+        day = self.df['day']
+        month = self.df['month']
+        year = self.df['year']
+        time = self.df['timestamp']
+        self.df['date'] = pd.to_datetime(year.astype(str) + '-' + month.astype(str) + '-' + day.astype(str) + ' ' + time, format = 'mixed', errors = 'coerce')
+        self.df.drop(['day','month','year','timestamp'], axis = 1, inplace = True)
+        return self.df
+    
+    def remove_null_json(self):
+        null_df = self.df.index[self.df.isnull().any(axis=1)]
+        self.df.drop(null_df, inplace = True)
+        return self.df
+    
+    def clean_json_s3(self):
+        self.df = self.concatenate_date()
+        self.df = self.remove_null_json()
         return self.df
 
  # %%

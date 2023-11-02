@@ -1,6 +1,5 @@
 # %%
 import pandas as pd
-from database_utils import DatabaseConnector
 import requests
 import tabula
 import boto3
@@ -84,11 +83,20 @@ class DataExtractor:
         
         except Exception as e:
             print(f"Error: {e}")
-        
+
+    def extract_json_s3(self,link): 
+        response = requests.get(link)
+        if response.status_code == 200:
+            self.data = response.json()
+            self.dict_df = pd.DataFrame(self.data)
+            return self.dict_df
+        else:
+            print("Failed to retrieve data. Status code:", response.status_code)   
         
 
 # %%
 if __name__ == '__main__':
+    from database_utils import DatabaseConnector
     init = DatabaseConnector()
     test = DataExtractor()
     table = test.read_rds_table(init, 'legacy_users')

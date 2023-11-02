@@ -34,6 +34,7 @@ class DatabaseConnector:
                 print(table[0])
     
     def upload_to_db(self,df,table_name):
+        self.credentials = self.read_db_creds()
         DATABASE_TYPE = 'postgresql'
         DBAPI = 'psycopg2'
         HOST = self.credentials['SQL_HOST']
@@ -49,6 +50,7 @@ class DatabaseConnector:
 
 if __name__ == "__main__":
     import pandas as pd
+    from sqlalchemy import create_engine
 
     test = DatabaseConnector()
     test.read_db_creds()
@@ -70,3 +72,7 @@ if __name__ == "__main__":
         
     test.credentials['SQL_HOST']
 
+
+# %%
+if __name__ == "__main__":
+    

@@ -1,30 +1,50 @@
 # %%
 import pandas as pd
-import numpy as np
 from dateutil.parser import parse
 from data_extraction import DataExtractor
 from database_utils import DatabaseConnector
 
+# %%
 class DataCleaning:
+    """
+    This class contains methods that will clean a wide range of data sources from APIs, csv files and AWS S3 buckets.
+
+    The first set of methods are aimed at cleaning a table pulled from AWS RDS.
+    The second set of methods clean data from a csv file pulled from the S3 bucket, ultimately being combined in the method clean_card_data
+    The last set of methods will clean data pulled from an API
+
+    The purpose of these functions is to check for correct formatting for each column in the data, if it incorrect then the data is changed to '0' or NaT 
+    """
     def __init__(self,df):
         self.df = df
     
     def try_parsing_date(self,text):
+        """
+        This method is a supporting function used in clean_date_columns. It tries to parse the date data and if not possible then it is safe to assume it is not the correct format so returns NaT
+        """
         try:
             return parse(text)
         except Exception:
             return pd.NaT
     
     def clean_date_columns(self):
+        """
+        This method will drop any rows of data that does not have date data in the correct format. This is because there are randomly generated values for non-date records.
+        """
         for col in self.df.columns:  
             if 'date' in col:
                 self.df[col] = self.df[col].apply(self.try_parsing_date)
                 self.df[col] = pd.to_datetime(self.df[col], errors='coerce')
-        na_index = self.df.index[self.df['date_of_birth'].isna()].tolist() # All records corresponding to this is random data
+        na_index = self.df.index[self.df['date_of_birth'].isna()].tolist() # All records corresponding to this is random generated data
         self.df = self.df.drop(na_index)
         return self.df
     
     def clean_phone_number(self):
+        """
+        Phone numbers from the US or Europe have a specific number of digits for phone numbers, this method evaluates the phone number column and returns 0 for incorrectly formatted phone numbers
+        
+        Phone numbers in this case are treated as string type, easier to evaluate as string and not used with int functions
+        """
         us_indexes = self.df[self.df['country'] == "United States"].index
         other_indexes = self.df[self.df['country'] != "United States"].index
 
@@ -90,7 +110,82 @@ class DataCleaning:
         self.df = self.clean_card_number()
         return self.df
 
-# %%
+    def remove_random_generated(self):
+        self.df['country_code'] = self.df['country_code'].astype(str)
+        self.df = self.df[self.df['country_code'].str.len() <= 2]
+        return self.df
+    
+    def clean_api_address(self):
+        self.df['address'] = self.df['address'].str.replace('\n', ',')
+        return self.df
+    
+    def clean_api_date(self):
+        for col in self.df.columns:  
+            if 'date' in col:
+                 self.df[col] = pd.to_datetime(self.df[col], format = 'mixed')
+        return self.df
+    
+    def clean_staff_numbers(self):
+        self.df['staff_numbers'] = self.df['staff_numbers'].replace(r'\D', '', regex=True)
+        return self.df
+    
+    def convert_lat_lon_type(self):
+        self.df['latitude'] = self.df['latitude'].astype(float)
+        self.df['longitude'] = self.df['longitude'].astype(float)
+        return self.df
+    
+    def clean_continent(self):
+        self.df['continent'] = self.df['continent'].str.replace('ee', '')
+        return self.df
+
+    def clean_store_data(self):
+        #self.df = self.df.drop(['Unnamed: 0','lat'],axis = 1)
+        self.df = self.remove_random_generated()
+        self.df = self.clean_api_address()
+        self.df = self.clean_api_date()
+        self.df = self.clean_staff_numbers()
+        self.df = self.convert_lat_lon_type()
+        self.df = self.clean_store_data()
+        return self.df
+
+    def transform_weight(self,row):
+        weight, unit = row['weights'],row['units']
+        if unit == 'kg':
+            return weight
+        elif unit == 'g'or unit == 'g .':
+            return weight / 1000 
+        elif unit == 'ml':
+            return weight / 1000
+        elif unit == 'oz':
+            return weight * 0.0283495
+        else:
+            return 0
+    
+    def convert_product_weights(self):
+        self.df[['weights','units']] = self.df['weight'].str.extract('(\d*\.?\d+)(\D+)', expand=True)
+        self.df['weights'] = self.df['weights'].astype(float)
+        self.df['weights'] = self.df.apply(self.transform_weight, axis = 1)
+        self.df.drop(['weight','units'], axis=1, inplace = True)
+        return self.df
+    
+    def remove_null(self):
+        self.df.dropna(inplace = True)
+        return self.df
+    
+    def clean_category(self):
+        self.cat = self.df['category'].value_counts()
+        self.get_cat = self.cat[self.cat < 2].index.tolist()
+        self.df = self.df[~self.df['category'].isin(self.get_cat)]
+        return self.df
+        
+    def clean_product_data(self):
+        self.df = self.remove_null()
+        self.df = self.clean_category()
+        self.df = self.convert_product_weights()
+        self.df = self.clean_api_date()
+        return self.df
+
+ # %%
 if __name__ == '__main__':
     db = DatabaseConnector()
     table = DataExtractor()
@@ -105,6 +200,7 @@ if __name__ == '__main__':
 #%%   
 if __name__ == '__main__':
     print(type(cleaned_data['phone_number'][0]))
+    print(cleaned_data.info())
     # %%
     db.upload_to_db(cleaned_data,'dim_users')
     # %%
@@ -117,8 +213,7 @@ if __name__ == '__main__':
     # %%
     remove_na_phone = clean_data.clean_phone_number()
     # %%
-    print(remove_na_phone)
-    print(remove_na_phone.info())
+    cleaned_data.head(10)
 
 # %%
 if __name__ == '__main__':
@@ -141,4 +236,48 @@ if __name__ == '__main__':
     print(result)
     # %%
     type(tidied_card['card_number'][1])
-    # %%
+# %%
+if __name__ == '__main__':
+    import pandas as pd
+    from database_utils import DatabaseConnector
+    df = pd.read_csv("api_data.csv")
+    cleaner = DataCleaning(df)
+    df_clean = cleaner.clean_store_data()
+    print(df_clean.head(20))
+    upload = DatabaseConnector()
+    upload.upload_to_db(df_clean, 'dim_store_details')
+
+
+
+# %%
+if __name__ == '__main__':
+    get_s3_object = DataExtractor()
+    s3_object = get_s3_object.extract_from_s3("s3://data-handling-public/products.csv")
+    get_cleaning = DataCleaning(s3_object)
+    print(s3_object)
+# %%
+# %%
+if __name__ == '__main__':
+    print(type(test))
+    print(type(s3_object))
+
+# %%
+if __name__ == '__main__':
+    test = get_cleaning.clean_category()
+    test = get_cleaning.remove_null()
+    test = get_cleaning.convert_product_weights()
+    print(test['category'].value_counts())
+    print(test)
+# %%
+if __name__ == '__main__':
+    test = get_cleaning.clean_product_data()
+# %%
+if __name__ == '__main__':
+    print(test)
+    print(test['date_added'].isnull().sum())
+
+# %%
+if __name__ == '__main__':
+    upload = DatabaseConnector()
+    upload.upload_to_db(test, 'dim_products')
+# %%

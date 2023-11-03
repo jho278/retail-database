@@ -145,13 +145,13 @@ class DataCleaning:
         """
         The above methods are combined to tidy the store data
         """
-        #self.df = self.df.drop(['Unnamed: 0','lat'],axis = 1)
+        self.df = self.df.drop(['Unnamed: 0','lat'],axis = 1)
         self.df = self.remove_random_generated()
         self.df = self.clean_api_address()
         self.df = self.clean_api_date()
         self.df = self.clean_staff_numbers()
         self.df = self.convert_lat_lon_type()
-        self.df = self.clean_store_data()
+        self.df = self.clean_continent()
         return self.df
 
     def transform_weight(self,row):
@@ -269,13 +269,24 @@ if __name__ == '__main__':
     # %%
     type(tidied_card['card_number'][1])
 # %%
+# Cleaning the API data on store details
 if __name__ == '__main__':
     import pandas as pd
     from database_utils import DatabaseConnector
     df = pd.read_csv("api_data.csv")
     cleaner = DataCleaning(df)
     df_clean = cleaner.clean_store_data()
+    upload = DatabaseConnector()
+    upload.upload_to_db(df_clean, 'dim_store_details')
+
+# %%
+if __name__ == '__main__':
+    #df_clean = cleaner.remove_random_generated()
+    #df_clean = cleaner.clean_api_address()
+    df_clean = cleaner.clean_api_date()
     print(df_clean.head(20))
+if __name__ == '__main__':
+    
     upload = DatabaseConnector()
     upload.upload_to_db(df_clean, 'dim_store_details')
 

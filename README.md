@@ -5,6 +5,8 @@
     - I incorporated Object Oriented Principles by abstracting the data cleaning process into smaller methods with straightforward names, then incorporated those methods into a singular  method. This is to show simply what steps was taken to clean the data. 
     - I used the `with XXX as conn:` to ensure that the connection to AWS services is closed after use.
     - I learnt to connect to different services within AWS such as S3, RDS, and it's APIs, and read different data types from PDFs, CSVs, JSON files into Python. 
+    - I learnt to create a star schema and its importance in ensuring the integrity of the data i.e. ensuring the records in the dim prefix tables can be linked to the orders_table
+    - I used different SQL techniques to query the database to inform the business on various decisions such as building what type of stores to maximise profits using `CASE` or `LEAD` to deal with different data types.
 
 ## Installation instructions
 I am using Visual Studio Code with the Conda 3.11.5 as my Python interpreter. I imported additional packages to run this project including:

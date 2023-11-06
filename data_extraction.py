@@ -21,7 +21,7 @@ class DataExtractor:
             return self.db_table
         
     def retrieve_pdf_data(self,link):
-        self.pdf_list = tabula.read_pdf(link, pages='all')
+        self.pdf_list = tabula.read_pdf(link, pages='all', stream = False)
         self.pdf_df = pd.concat(self.pdf_list, ignore_index=True)
         return self.pdf_df
     

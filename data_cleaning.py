@@ -1,8 +1,6 @@
 # %%
 import pandas as pd
 from dateutil.parser import parse
-from data_extraction import DataExtractor
-from database_utils import DatabaseConnector
 
 # %%
 class DataCleaning:
@@ -106,11 +104,22 @@ class DataCleaning:
         self.df.loc[:,'comparison'] = self.df.apply(lambda row: len(str(row['card_number'])) == row['expected_num_dig'] if isinstance(row['expected_num_dig'], int) else len(str(row['card_number'])) in row['expected_num_dig'], axis=1)
         self.df.loc[self.df['comparison'] == False, 'card_number'] = '0'
         self.df.loc[self.df['card_number'].str.contains(r'\D'), 'card_number'] = '0'
+        self.df.drop(['expected_num_dig','comparison'], axis = 1, inplace = True)
         return self.df
     
+    def remove_question_mark(self):
+        self.df['card_number'] = self.df['card_number'].astype(str).str.replace('?', '')
+        return self.df
+
+    def remove_str_null(self):
+        str_null = pdf.loc[pdf['card_number'] == 'NULL'].index.tolist()
+        self.df.drop(str_null, axis = 0, inplace = True)
+        return self.df
+
     def clean_card_data(self):
+        self.df = self.remove_question_mark()
         self.df = self.clean_card_provider()
-        self.df = self.clean_card_number()
+        #self.df = self.clean_card_number()
         return self.df
 
     def remove_random_generated(self):
@@ -249,17 +258,22 @@ if __name__ == '__main__':
 
 # %%
 if __name__ == '__main__':
+    from data_extraction import DataExtractor
+    from database_utils import DatabaseConnector
     init = DatabaseConnector()
     test = DataExtractor()
     pdf = test.retrieve_pdf_data('https://data-handling-public.s3.eu-west-1.amazonaws.com/card_details.pdf')
 
-    print(pdf.head(2))
+    print(pdf.info())
 
     # %%
     tidy_card = DataCleaning(pdf)
     tidied_card = tidy_card.clean_card_data()
-    #%%
     print(tidied_card)
+    # %%
+    print(tidied_card.loc[tidied_card['card_number'] == '4971858637664481'])
+    #%%
+    init.upload_to_db(tidied_card,'dim_card_details')
 
     # %%
     tidied_card[tidied_card['comparison']==False].head(20)
@@ -324,3 +338,22 @@ if __name__ == '__main__':
     upload = DatabaseConnector()
     upload.upload_to_db(test, 'dim_products')
 # %%
+if __name__ == '__main__':
+    from data_extraction import DataExtractor
+    from database_utils import DatabaseConnector
+    from data_cleaning import DataCleaning
+    init = DatabaseConnector()
+    test = DataExtractor()
+    df = test.read_rds_table(init, 'orders_table')
+
+    print(df.info())
+# %%
+if __name__ == '__main__':
+    clean = DataCleaning(df)
+    cleaned = clean.clean_orders_data()
+    cleaned.info()
+    cleaned.loc[cleaned['user_uuid'] == '0423a395-a04d-4e4a-bd0f-d237cbd5a295']
+    add_db = cleaned[['date_uuid','user_uuid']]
+    add_db.head(5)# %%
+    init.upload_to_db(add_db,'inner_join')
+
